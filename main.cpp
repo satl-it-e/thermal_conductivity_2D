@@ -10,7 +10,8 @@
 #include "visualization.h"
 
 
-std::mutex mtx;
+std::mutex new_mtx;
+std::mutex old_mtx;
 
 
 bool system_is_stable(const MyConfig &mc){
@@ -19,70 +20,48 @@ bool system_is_stable(const MyConfig &mc){
 
 
 double new_temperature(const MyConfig &mc, const unsigned long i, const unsigned long j, const std::vector<std::vector<double>> &old_field){
-    std::lock_guard<std::mutex> lock(mtx);
+    std::lock_guard<std::mutex> lock(old_mtx);
     return old_field.at(i).at(j) +  mc.delta_t * mc.alpha *
     (((old_field.at(i - 1).at(j) - 2 * old_field.at(i).at(j) + old_field.at(i + 1).at(j)) / pow(mc.delta_x, 2)) +
     ((old_field.at(i).at(j - 1) - 2 * old_field.at(i).at(j) + old_field.at(i).at(j + 1)) / pow(mc.delta_y, 2)));
 }
 
-void next_iteration_thread(std::vector<std::vector<double>> &result, const MyConfig mc, const std::vector<std::vector<double>> old_field,
+void next_iteration_thread(std::vector<std::vector<double>> &new_field, const MyConfig &mc, const std::vector<std::vector<double>> &old_field,
         const unsigned long i_down, const unsigned long i_up, const unsigned long j_down, const unsigned long j_up){
-    std::vector<double> row;
     for (unsigned long i = i_down; i <= i_up; i++){
-        row.clear();
+        std::vector<double> row;
         for (unsigned long j = j_down; j <= j_up; j++){
             row.push_back(new_temperature(mc, i , j, old_field));
         }
-        result.push_back(row);
+        new_mtx.lock();
+        new_field[i] = row;
+        new_mtx.unlock();
     }
 }
 
 
 std::vector<std::vector<double>> next_iteration(const MyConfig &mc, const std::vector<std::vector<double>> &old_field){
-    std::vector<std::vector<double>> new_field;
+    std::vector<std::vector<double>> new_field = old_field;
     std::vector<double> row;
     int length = (int) old_field.size(), width = (int) old_field[0].size();
     std::vector<std::thread> threads;
     int delta_rows = (length - 2) / mc.num_of_threads;
 
-    std::vector<std::vector<std::vector<double>>> results;
     for (int i = 0; i < mc.num_of_threads - 1; i++){
-        std::vector<std::vector<double>> new_field_of_thread;
-        results.push_back(new_field_of_thread);
-        threads.emplace_back(next_iteration_thread, std::ref(results[i]), std::ref(mc), old_field,
+        threads.emplace_back(next_iteration_thread, std::ref(new_field), std::ref(mc), std::ref(old_field),
                 i * delta_rows + 1, (i + 1) * delta_rows, 1, width - 2);
-        std::cout << i * delta_rows + 1 << " " << (i + 1) * delta_rows << std::endl;
     }
-    std::vector<std::vector<double>> new_field_of_thread;
-    results.push_back(new_field_of_thread);
-    threads.emplace_back(next_iteration_thread, std::ref(results[mc.num_of_threads - 1]),
-            std::ref(mc), old_field, (mc.num_of_threads - 1) * delta_rows + 1, length - 2, 1, width - 2);
-    std::cout << (mc.num_of_threads - 1) * delta_rows + 1 << " " << length - 2 << std::endl;
+    threads.emplace_back(next_iteration_thread, std::ref(new_field),
+            std::ref(mc), std::ref(old_field), (mc.num_of_threads - 1) * delta_rows + 1, length - 2, 1, width - 2);
 
-//    unsigned long capacity = 0;
     for (auto &thread: threads){
         thread.join();
     }
 
-    std::cout << "Everything okay here." << std::endl;
-
-//    for (auto &result: results){
-//        capacity += result.size();
-//    }
-//
-//    new_field.reserve(capacity);
-//
-//    for (auto &rows: results){
-//        new_field.insert(new_field.end(), std::make_move_iterator(rows.begin()), std::make_move_iterator(rows.end()));
-//    }
-//
-//    // Adding edges
-//    new_field.insert(new_field.begin(), old_field[0]);
-//    new_field.push_back(old_field[length - 1]);
-//    for (int i = 1; i < length - 1; i++){
-//        new_field[i].insert(new_field[i].begin(), old_field[i][0]);
-//        new_field[i].push_back(old_field[i][width - 1]);
-//    }
+    for (int i = 1; i < length - 1; i++){
+        new_field[i].insert(new_field[i].begin(), old_field[i][0]);
+        new_field[i].push_back(old_field[i][width - 1]);
+    }
     return new_field;
 }
 
@@ -127,6 +106,7 @@ int main(int argc, char* argv[]){
     }
 
     // First iteration
+    std::cout << "Reading first iteration." << std::endl;
     std::vector<std::vector<double>> field;
     double field_min = INFINITY, field_max = -INFINITY;
 
@@ -172,6 +152,8 @@ int main(int argc, char* argv[]){
     std::thread visualization(visualization_thread, std::ref(vis_q), std::ref(mc.visualization_filename),
             std::ref(field_min), std::ref(field_max));
 
+    std::cout << "Next iterations." << std::endl;
+
     // Iterations
     for (int i = 0; i < mc.num_of_steps; i++){
         for (int j = 0; j < mc.visualization_interval; j++){
@@ -184,6 +166,7 @@ int main(int argc, char* argv[]){
     vis_q.finish();
     visualization.join();
 
+    std::cout << "Finish." << std::endl;
     return 0;
 }
 

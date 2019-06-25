@@ -19,13 +19,6 @@ void visualize(const std::vector<std::vector<double>> &field, std::string &filen
         }
         i++;
     }
-//
-//    for (auto &row: field){
-//        for (auto &el: row){
-//            std::cout << el << " ";
-//        }
-//        std::cout << std::endl;
-//    }
 
     cv::imwrite(filename, vis_field);
 }
