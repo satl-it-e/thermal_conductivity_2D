@@ -4,6 +4,54 @@
 #include <stdlib.h>
 
 
+
+void hot_top__cold_down__cold_middle(std::ofstream &out_file, const unsigned int &height, const unsigned int &width){
+    int i, j;
+
+    for (j = 0; j < width; j++){
+        out_file << 100 << " ";
+    }
+    out_file << std::endl;
+    for (i = 1; i < height; i++) {
+        out_file << 50 << " ";
+        for (j = 1; j < width - 1; j++) {
+            out_file << 0 << " ";
+        }
+        out_file << 50 << " ";
+        out_file << std::endl;
+    }
+}
+
+
+void cold_edges__hot_middle(std::ofstream &out_file, const unsigned int &height, const unsigned int &width){
+    int i, j;
+
+    for (i = 0; i < height / 3; i++) {
+        for (j = 0; j < width; j++) {
+            out_file << 0 << " ";
+        }
+        out_file << std::endl;
+    }
+    for (i = 1; i < height / 3; i++) {
+        for (j = 0; j < width / 3; j++) {
+            out_file << 0 << " ";
+        }
+        for (j = 0; j < width / 3; j++) {
+            out_file << 100 << " ";
+        }
+        for (j = 0; j < (width / 3) + (width % 3); j++) {
+            out_file << 0 << " ";
+        }
+        out_file << std::endl;
+    }
+    for (i = 0; i < (height / 3) + (height % 3); i++) {
+        for (j = 0; j < width; j++) {
+            out_file << 0 << " ";
+        }
+        out_file << std::endl;
+    }
+}
+
 int main(int argc, char* argv[]){
     std::string out_filename = "field.txt";
     unsigned int height = 1000;
@@ -37,22 +85,10 @@ int main(int argc, char* argv[]){
     } else{
         std::cout << "Height: " << height << "\nWidth: " << width << "\nOut filename: " << out_filename << std::endl;
     }
-    int i, j;
 
     std::ofstream out_file(out_filename);
     if (out_file.good()) {
-        for (j = 0; j < width; j++){
-            out_file << 100 << " ";
-        }
-        out_file << std::endl;
-        for (i = 1; i < height; i++) {
-            out_file << 50 << " ";
-            for (j = 1; j < width - 1; j++) {
-                out_file << 0 << " ";
-            }
-            out_file << 50 << " ";
-            out_file << std::endl;
-        }
+        cold_edges__hot_middle(out_file, height, width);
     } else{
         std::cerr << "Something wrong with out file." << std::endl;
         return -3;

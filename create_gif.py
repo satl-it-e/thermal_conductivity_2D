@@ -25,4 +25,4 @@ def main(result_filename, iteration_filename, path=''):
 
 
 if __name__ == "__main__":
-    main('visualized/new_res_1000', 'iter.jpg')
+    main('visualized/cold_edges__hot_middle_1000', 'iter.jpg')

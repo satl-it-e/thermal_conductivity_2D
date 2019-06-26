@@ -7,7 +7,10 @@ set(CMAKE_CXX_FLAGS -pthread)
 find_package(Threads REQUIRED)
 find_package(OpenCV REQUIRED )
 
-add_executable(thermal_conductivity_2D main.cpp config.cpp visualization.cpp my_queue.h config.h visualization.h)
+include_directories(thread_pool)
+
+
+add_executable(thermal_conductivity_2D main.cpp config.cpp visualization.cpp my_queue.h config.h visualization.h thread_pool/ctpl.h)
 add_executable(generate_field generate_field.cpp)
 
 

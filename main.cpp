@@ -9,6 +9,7 @@
 #include "my_queue.h"
 #include "visualization.h"
 
+#include <ctpl.h>
 
 std::mutex new_mtx;
 std::mutex old_mtx;
@@ -26,7 +27,7 @@ double new_temperature(const MyConfig &mc, const unsigned long i, const unsigned
     ((old_field.at(i).at(j - 1) - 2 * old_field.at(i).at(j) + old_field.at(i).at(j + 1)) / pow(mc.delta_y, 2)));
 }
 
-void next_iteration_thread(std::vector<std::vector<double>> &new_field, const MyConfig &mc, const std::vector<std::vector<double>> &old_field,
+void next_iteration_thread(int id, std::vector<std::vector<double>> &new_field, const MyConfig &mc, const std::vector<std::vector<double>> &old_field,
         const unsigned long i_down, const unsigned long i_up, const unsigned long j_down, const unsigned long j_up){
     for (unsigned long i = i_down; i <= i_up; i++){
         std::vector<double> row;
@@ -40,24 +41,27 @@ void next_iteration_thread(std::vector<std::vector<double>> &new_field, const My
 }
 
 
-std::vector<std::vector<double>> next_iteration(const MyConfig &mc, const std::vector<std::vector<double>> &old_field){
+std::vector<std::vector<double>> next_iteration(const MyConfig &mc, const std::vector<std::vector<double>> &old_field, ctpl::thread_pool &my_thread_pool){
     std::vector<std::vector<double>> new_field = old_field;
     std::vector<double> row;
     int length = (int) old_field.size(), width = (int) old_field[0].size();
-    std::vector<std::thread> threads;
     int delta_rows = (length - 2) / mc.num_of_threads;
 
+    // Dividing counting to several threads
+    std::vector<std::future<void>> threads_results(mc.num_of_threads);
+    
     for (int i = 0; i < mc.num_of_threads - 1; i++){
-        threads.emplace_back(next_iteration_thread, std::ref(new_field), std::ref(mc), std::ref(old_field),
+        threads_results[i] = my_thread_pool.push(next_iteration_thread, std::ref(new_field), std::ref(mc), std::ref(old_field),
                 i * delta_rows + 1, (i + 1) * delta_rows, 1, width - 2);
     }
-    threads.emplace_back(next_iteration_thread, std::ref(new_field),
+    threads_results[mc.num_of_threads - 1] = my_thread_pool.push(next_iteration_thread, std::ref(new_field),
             std::ref(mc), std::ref(old_field), (mc.num_of_threads - 1) * delta_rows + 1, length - 2, 1, width - 2);
-
-    for (auto &thread: threads){
-        thread.join();
+    
+    for (int i = 0; i < mc.num_of_threads; i++){
+        threads_results[i].get();
     }
-
+    
+    // Adding edges
     for (int i = 1; i < length - 1; i++){
         new_field[i].insert(new_field[i].begin(), old_field[i][0]);
         new_field[i].push_back(old_field[i][width - 1]);
@@ -153,11 +157,12 @@ int main(int argc, char* argv[]){
             std::ref(field_min), std::ref(field_max));
 
     std::cout << "Next iterations." << std::endl;
+    ctpl::thread_pool threads((int) mc.num_of_threads);
 
     // Iterations
     for (int i = 0; i < mc.num_of_steps; i++){
         for (int j = 0; j < mc.visualization_interval; j++){
-            field = next_iteration(mc, field);
+            field = next_iteration(mc, field, threads);
         }
         vis_q.push(field);
     }
