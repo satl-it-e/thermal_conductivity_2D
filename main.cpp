@@ -50,18 +50,18 @@ void next_iteration(const MyConfig &mc, const std::vector<std::vector<double>> &
 
     // Dividing counting to several threads
     std::vector<std::future<void>> threads_results(mc.num_of_threads);
-    
+
     for (int i = 0; i < mc.num_of_threads - 1; i++){
         threads_results[i] = my_thread_pool.push(next_iteration_thread, std::ref(new_field), std::ref(mc), std::ref(old_field),
                 i * delta_rows + 1, (i + 1) * delta_rows, 1, width - 2);
     }
     threads_results[mc.num_of_threads - 1] = my_thread_pool.push(next_iteration_thread, std::ref(new_field),
             std::ref(mc), std::ref(old_field), (mc.num_of_threads - 1) * delta_rows + 1, length - 2, 1, width - 2);
-    
+
     for (int i = 0; i < mc.num_of_threads; i++){
         threads_results[i].get();
     }
-    
+
     // Adding edges
     for (int i = 1; i < length - 1; i++){
         new_field[i].insert(new_field[i].begin(), old_field[i][0]);
@@ -179,6 +179,8 @@ int main(int argc, char* argv[]){
         return -3;
     }
 
+    new_field = field;
+
     // Visualization queue
     MyQueue<std::vector<std::vector<double> > > vis_q;
     std::thread visualization(visualization_thread, std::ref(vis_q), std::ref(mc.visualization_filename),
@@ -204,6 +206,7 @@ int main(int argc, char* argv[]){
     }
 
     if (mc.last_state_filename != "-"){
+        std::cout << "Writing last state to file" << std::endl;
         write_field_to_file(mc, field);
     }
 
@@ -214,4 +217,3 @@ int main(int argc, char* argv[]){
     std::cout << "Finish." << std::endl;
     return 0;
 }
-
