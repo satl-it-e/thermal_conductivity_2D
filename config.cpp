@@ -47,6 +47,7 @@ int MyConfig::load_configs_from_file(const std::string &f_name){
     cnf.emplace(std::make_pair("visualization_interval", [this](const std::list<std::string> s_values)-> bool { return set_unsigned_int(visualization_interval, s_values);}));
     cnf.emplace(std::make_pair("num_of_steps", [this](const std::list<std::string> s_values)-> bool { return set_unsigned_int(num_of_steps, s_values);}));
     cnf.emplace(std::make_pair("visualization_filename", [this](const std::list<std::string> s_values)-> bool { return set_file(visualization_filename, s_values);}));
+    cnf.emplace(std::make_pair("last_state_filename", [this](const std::list<std::string> s_values)-> bool { return set_file(last_state_filename, s_values);}));
 
     try{
 

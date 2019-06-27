@@ -4,8 +4,7 @@
 #include <stdlib.h>
 
 
-
-void hot_top__cold_down__cold_middle(std::ofstream &out_file, const unsigned int &height, const unsigned int &width){
+void hot_top__cold_rest(std::ofstream &out_file, const unsigned int &height, const unsigned int &width){
     int i, j;
 
     for (j = 0; j < width; j++){
@@ -13,11 +12,9 @@ void hot_top__cold_down__cold_middle(std::ofstream &out_file, const unsigned int
     }
     out_file << std::endl;
     for (i = 1; i < height; i++) {
-        out_file << 50 << " ";
-        for (j = 1; j < width - 1; j++) {
+        for (j = 0; j < width; j++) {
             out_file << 0 << " ";
         }
-        out_file << 50 << " ";
         out_file << std::endl;
     }
 }
@@ -51,6 +48,40 @@ void cold_edges__hot_middle(std::ofstream &out_file, const unsigned int &height,
         out_file << std::endl;
     }
 }
+
+
+void hot_rigth_top__cold_rest(std::ofstream &out_file, const unsigned int &height, const unsigned int &width){
+    int i, j;
+    for (j = 0; j < width - 1; j++){
+        out_file << 0 << " ";
+    }
+    out_file << 100 << std::endl;
+
+    for (i = 1; i < height; i++){
+        for (j = 0; j < width; j++){
+            out_file << 0 << " ";
+        }
+        out_file << std::endl;
+    }
+}
+
+void hot_top__middle_right_left__cold_bottom_middle(std::ofstream &out_file, const unsigned int &height, const unsigned int &width){
+    int i, j;
+
+    for (j = 0; j < width; j++){
+        out_file << 100 << " ";
+    }
+    out_file << std::endl;
+    for (i = 1; i < height; i++) {
+        out_file << 50 << " ";
+        for (j = 1; j < width - 1; j++) {
+            out_file << 0 << " ";
+        }
+        out_file << 50 << " ";
+        out_file << std::endl;
+    }
+}
+
 
 int main(int argc, char* argv[]){
     std::string out_filename = "field.txt";
@@ -88,7 +119,7 @@ int main(int argc, char* argv[]){
 
     std::ofstream out_file(out_filename);
     if (out_file.good()) {
-        cold_edges__hot_middle(out_file, height, width);
+        hot_top__cold_rest(out_file, height, width);
     } else{
         std::cerr << "Something wrong with out file." << std::endl;
         return -3;

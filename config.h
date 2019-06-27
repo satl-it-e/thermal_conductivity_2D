@@ -28,6 +28,7 @@ public:
     unsigned int visualization_interval;
     unsigned int num_of_steps;
     std::string visualization_filename;
+    std::string last_state_filename;
 
 private:
     std::unordered_set<std::string> check_set = {"map_file",
@@ -42,7 +43,8 @@ private:
                                                  "num_of_threads",
                                                  "visualization_interval",
                                                  "num_of_steps",
-                                                 "visualization_filename"};
+                                                 "visualization_filename",
+                                                 "last_state_filename"};
 
 public:
     bool set_file(std::string &filename, const std::list<std::string> &s_values);

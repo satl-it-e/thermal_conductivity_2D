@@ -1,4 +1,4 @@
-map_file                field.txt
+map_file                hot_top__cold_down_and_middle.txt
 heat_capacity           395
 thermal_conductivity    400
 density                 8960
@@ -8,6 +8,7 @@ delta_x                 0.1
 delta_y                 0.1
 delta_t                 10
 num_of_threads          4
-visualization_interval  100
+visualization_interval  10000
 num_of_steps            10
 visualization_filename  iter.jpg
+last_state_filename     last.txt

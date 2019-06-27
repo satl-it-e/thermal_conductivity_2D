@@ -41,8 +41,9 @@ void next_iteration_thread(int id, std::vector<std::vector<double>> &new_field, 
 }
 
 
-std::vector<std::vector<double>> next_iteration(const MyConfig &mc, const std::vector<std::vector<double>> &old_field, ctpl::thread_pool &my_thread_pool){
-    std::vector<std::vector<double>> new_field = old_field;
+void next_iteration(const MyConfig &mc, const std::vector<std::vector<double>> &old_field,
+        std::vector<std::vector<double>> &new_field, ctpl::thread_pool &my_thread_pool){
+//    std::vector<std::vector<double>> new_field = old_field;
     std::vector<double> row;
     int length = (int) old_field.size(), width = (int) old_field[0].size();
     int delta_rows = (length - 2) / mc.num_of_threads;
@@ -66,7 +67,7 @@ std::vector<std::vector<double>> next_iteration(const MyConfig &mc, const std::v
         new_field[i].insert(new_field[i].begin(), old_field[i][0]);
         new_field[i].push_back(old_field[i][width - 1]);
     }
-    return new_field;
+//    return new_field;
 }
 
 
@@ -86,34 +87,7 @@ void visualization_thread(MyQueue<std::vector<std::vector<double>>> &v_q, const 
 }
 
 
-int main(int argc, char* argv[]){
-
-    // Configurations
-    std::string conf_file_name = "config.dat";
-    if (argc >= 2){
-        conf_file_name = argv[1];
-    }
-
-    MyConfig mc;
-    mc.load_configs_from_file(conf_file_name);
-    if (mc.is_configured()) {
-        std::cout << "Configurations loaded successfully.\n" << std::endl;
-    } else {
-        std::cerr << "Error. Not all configurations were loaded properly.";
-        return -1;
-    }
-
-    // Check system stability
-    if (!system_is_stable(mc)){
-        std::cerr << "System is not stable." << std::endl;
-        return -2;
-    }
-
-    // First iteration
-    std::cout << "Reading first iteration." << std::endl;
-    std::vector<std::vector<double>> field;
-    double field_min = INFINITY, field_max = -INFINITY;
-
+int read_field_from_file(MyConfig &mc, std::vector<std::vector<double>> &field, double &field_min, double &field_max){
     std::ifstream file(mc.map_file);
     try{
         if (file.is_open()){
@@ -151,20 +125,86 @@ int main(int argc, char* argv[]){
         return -3;
     }
 
+    file.close();
+    return 0;
+}
+
+
+int write_field_to_file(MyConfig &mc, std::vector<std::vector<double>> &field){
+    std::ofstream out_file(mc.last_state_filename);
+    if (out_file.good()) {
+        for (auto &row: field) {
+            for (auto &el: row) {
+                out_file << el << " ";
+            }
+            out_file << std::endl;
+        }
+    } else{
+        std::cerr << "Couldn't open out file for saving current state: " << mc.last_state_filename << std::endl;
+        return -1;
+    }
+    return 0;
+}
+
+
+int main(int argc, char* argv[]){
+
+    // Configurations
+    std::string conf_file_name = "config.dat";
+    if (argc >= 2){
+        conf_file_name = argv[1];
+    }
+
+    MyConfig mc;
+    mc.load_configs_from_file(conf_file_name);
+    if (mc.is_configured()) {
+        std::cout << "Configurations loaded successfully.\n" << std::endl;
+    } else {
+        std::cerr << "Error. Not all configurations were loaded properly.";
+        return -1;
+    }
+
+    // Check system stability
+    if (!system_is_stable(mc)){
+        std::cerr << "System is not stable." << std::endl;
+        return -2;
+    }
+
+    // First iteration
+    std::cout << "Reading first iteration." << std::endl;
+    std::vector<std::vector<double>> field, new_field, middle_field;
+    double field_min = INFINITY, field_max = -INFINITY;
+
+    if (read_field_from_file(mc, field, field_min, field_max) != 0){
+        return -3;
+    }
+
     // Visualization queue
     MyQueue<std::vector<std::vector<double> > > vis_q;
     std::thread visualization(visualization_thread, std::ref(vis_q), std::ref(mc.visualization_filename),
             std::ref(field_min), std::ref(field_max));
 
+    vis_q.push(field);
+
     std::cout << "Next iterations." << std::endl;
     ctpl::thread_pool threads((int) mc.num_of_threads);
 
+    int visualization_interval = (int) (mc.visualization_interval / mc.delta_t);
+
+
     // Iterations
     for (int i = 0; i < mc.num_of_steps; i++){
-        for (int j = 0; j < mc.visualization_interval; j++){
-            field = next_iteration(mc, field, threads);
+        for (int j = 0; j < visualization_interval; j++){
+            next_iteration(mc, field, new_field, threads);
+            middle_field = std::move(field);
+            field = std::move(new_field);
+            new_field = std::move(middle_field);
         }
         vis_q.push(field);
+    }
+
+    if (mc.last_state_filename != "-"){
+        write_field_to_file(mc, field);
     }
 
 
